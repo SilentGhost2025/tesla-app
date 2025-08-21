@@ -1,0 +1,59 @@
+pipeline{
+				agent any 
+				tools{
+					maven "maven3.9.1"	
+				}
+				stages{
+					stage('1cloneCode'){
+						steps{
+							sh "echo 'Cloning the lates application version.' "
+							git "https://github.com/SilentGhost2025/tesla-app.git"
+							//This works only for Public repositories.
+						}
+					}
+				stage('2test+Build'){
+						steps{
+							sh "echo 'running J-unit test cases' "
+							sh "echo 'testing must pass to create artifact'"
+							sh "mvn clean package"
+						}
+					}
+		   		    stage('3codeQuality'){
+		   		        steps{
+		   		            sh "echo 'Testing for code quality' "
+		   		            sh "mvn sonar:sonar"
+		   		        }
+		   		    }
+					stage('4uploadArtifacts'){
+					    steps{
+					        sh "echo 'Uploading artifacts to artifactory' "
+					        sh "mvn deploy"
+					    }
+					}
+					stage('7deploy2Prod'){
+					    steps{
+					        deploy adapters: [tomcat9(alternativeDeploymentContext: '', credentialsId: 'e76bcf7f-1e1e-48d3-ab89-8b8f1501829d', path: '', url: 'http://75.101.182.48:8080/')], contextPath: null, war: 'target/*war'
+					    }
+					} 
+					stage('8emailNotification'){
+					    steps{
+					       emailext body: '''Hi
+Salva the message should be emailed to you as soon as you complete deployment finally
+at the bottom end of the pipeline.''', recipientProviders: [buildUser()], subject: 'Final deployment message' 
+					    }
+					} 
+				}               
+				post{
+				success{
+				    emailext body: '''Hey guys ;
+Good job. I can see our application has been fully deployed.''', recipientProviders: [buildUser(), contributor(), developers()], subject: 'Deployment successful', to: 'abolarinsalvation2005@gmail.com'
+				}
+				failure{
+				   emailext body: '''Hey guys ;
+I want y\'all to roll back because our deployment just failed now.
+Thanks.....''', recipientProviders: [buildUser(), contributor(), developers()], subject: 'Deployment Failure', to: 'abolarinsalvation2005@gmail.com' 
+				}
+				} 
+				
+			} 
+			
